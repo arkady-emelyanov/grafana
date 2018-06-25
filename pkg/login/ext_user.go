@@ -133,16 +133,16 @@ func syncOrgTeams(userId int64, orgId int64, teamIdList []int64) error {
 	}
 
 	// revoke team membership
-	processedTeams := map[int64]bool{}
+	processed := map[int64]bool{}
 	for _, team := range teamsQuery.Result {
-		processedTeams[team.Id] = true
+		processed[team.Id] = true
 
 		// is user doesn't belongs to team anymore?
 		if !teamIdListContainsId(teamIdList, team.Id) {
 			cmd := &m.RemoveTeamMemberCommand{
-				UserId: userId,
-				OrgId:  team.OrgId,
 				TeamId: team.Id,
+				UserId: userId,
+				OrgId:  orgId,
 			}
 			if err := bus.Dispatch(cmd); err != nil {
 				return err
@@ -152,14 +152,14 @@ func syncOrgTeams(userId int64, orgId int64, teamIdList []int64) error {
 
 	// grant team membership
 	for _, teamId := range teamIdList {
-		if _, processed := processedTeams[teamId]; processed {
+		if _, skip := processed[teamId]; skip {
 			continue
 		}
 
 		cmd := &m.AddTeamMemberCommand{
+			TeamId: teamId,
 			UserId: userId,
 			OrgId:  orgId,
-			TeamId: teamId,
 		}
 		if err := bus.Dispatch(cmd); err != nil {
 			return err
