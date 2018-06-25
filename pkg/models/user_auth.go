@@ -20,6 +20,7 @@ type ExternalUserInfo struct {
 	Login      string
 	Name       string
 	OrgRoles   map[int64]RoleType
+	OrgTeams   map[int64][]int64 // { orgId: [teamId, teamId, ...], }
 }
 
 // ---------------------

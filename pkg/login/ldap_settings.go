@@ -32,7 +32,7 @@ type LdapServerConf struct {
 	GroupSearchFilterUserAttribute string   `toml:"group_search_filter_user_attribute"`
 	GroupSearchBaseDNs             []string `toml:"group_search_base_dns"`
 
-	LdapGroups []*LdapGroupToOrgRole `toml:"group_mappings"`
+	LdapGroups []*LdapGroupMapping `toml:"group_mappings"`
 }
 
 type LdapAttributeMap struct {
@@ -43,10 +43,11 @@ type LdapAttributeMap struct {
 	MemberOf string `toml:"member_of"`
 }
 
-type LdapGroupToOrgRole struct {
+type LdapGroupMapping struct {
 	GroupDN string     `toml:"group_dn"`
 	OrgId   int64      `toml:"org_id"`
 	OrgRole m.RoleType `toml:"org_role"`
+	TeamId  int64      `toml:"team_id"`
 }
 
 var LdapCfg LdapConfig

@@ -164,8 +164,10 @@ func (a *ldapAuther) GetGrafanaUserFor(ctx *m.ReqContext, ldapUser *LdapUserInfo
 		Login:      ldapUser.Username,
 		Email:      ldapUser.Email,
 		OrgRoles:   map[int64]m.RoleType{},
+		OrgTeams:   map[int64][]int64{},
 	}
 
+	// LDAP groups to Org mapping
 	for _, group := range a.server.LdapGroups {
 		// only use the first match for each org
 		if extUser.OrgRoles[group.OrgId] != "" {
@@ -174,6 +176,14 @@ func (a *ldapAuther) GetGrafanaUserFor(ctx *m.ReqContext, ldapUser *LdapUserInfo
 
 		if ldapUser.isMemberOf(group.GroupDN) {
 			extUser.OrgRoles[group.OrgId] = group.OrgRole
+
+			// if team_id is set, add team membership mapping as well. org_id is always > 0.
+			if group.TeamId > 0 {
+				extUser.OrgTeams[group.OrgId] = append(
+					extUser.OrgTeams[group.OrgId],
+					group.TeamId,
+				)
+			}
 		}
 	}
 

@@ -116,6 +116,59 @@ func updateUser(user *m.User, extUser *m.ExternalUserInfo) error {
 	return bus.Dispatch(updateCmd)
 }
 
+func teamIdListContainsId(teamIdList []int64, teamId int64) bool {
+	for _, j := range teamIdList {
+		if teamId == j {
+			return true
+		}
+	}
+	return false
+}
+
+func syncOrgTeams(userId int64, orgId int64, teamIdList []int64) error {
+	// load up user teams within org
+	teamsQuery := &m.GetTeamsByUserQuery{UserId: userId, OrgId: orgId}
+	if err := bus.Dispatch(teamsQuery); err != nil {
+		return err
+	}
+
+	// revoke team membership
+	processed := map[int64]bool{}
+	for _, team := range teamsQuery.Result {
+		processed[team.Id] = true
+
+		// is user doesn't belongs to team anymore?
+		if !teamIdListContainsId(teamIdList, team.Id) {
+			cmd := &m.RemoveTeamMemberCommand{
+				TeamId: team.Id,
+				UserId: userId,
+				OrgId:  orgId,
+			}
+			if err := bus.Dispatch(cmd); err != nil {
+				return err
+			}
+		}
+	}
+
+	// grant team membership
+	for _, teamId := range teamIdList {
+		if _, skip := processed[teamId]; skip {
+			continue
+		}
+
+		cmd := &m.AddTeamMemberCommand{
+			TeamId: teamId,
+			UserId: userId,
+			OrgId:  orgId,
+		}
+		if err := bus.Dispatch(cmd); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func syncOrgRoles(user *m.User, extUser *m.ExternalUserInfo) error {
 	// don't sync org roles if none are specified
 	if len(extUser.OrgRoles) == 0 {
@@ -147,6 +200,11 @@ func syncOrgRoles(user *m.User, extUser *m.ExternalUserInfo) error {
 
 	// add any new org roles
 	for orgId, orgRole := range extUser.OrgRoles {
+		// sync team membership (will grant team membership for org)
+		if err := syncOrgTeams(user.Id, orgId, extUser.OrgTeams[orgId]); err != nil {
+			return err
+		}
+
 		if _, exists := handledOrgIds[orgId]; exists {
 			continue
 		}
@@ -161,6 +219,11 @@ func syncOrgRoles(user *m.User, extUser *m.ExternalUserInfo) error {
 
 	// delete any removed org roles
 	for _, orgId := range deleteOrgIds {
+		// sync team membership (will revoke team membership for org)
+		if err := syncOrgTeams(user.Id, orgId, extUser.OrgTeams[orgId]); err != nil {
+			return err
+		}
+
 		cmd := &m.RemoveOrgUserCommand{OrgId: orgId, UserId: user.Id}
 		if err := bus.Dispatch(cmd); err != nil {
 			return err
