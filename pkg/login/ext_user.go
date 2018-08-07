@@ -346,7 +346,6 @@ func syncUserTeamJoin(s *userSyncState) userSyncStateFn {
 			cmdSearchTeam := &m.SearchTeamsQuery{
 				OrgId: orgId,
 				Name:  teamName,
-				Limit: 1, // should be only one
 			}
 			err = bus.Dispatch(cmdSearchTeam)
 			if err != nil && err != m.ErrTeamNotFound {
