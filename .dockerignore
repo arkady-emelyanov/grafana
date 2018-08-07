@@ -9,10 +9,8 @@ docker
 docs
 dump.rdb
 bin
-conf
 .idea
 node_modules
-vendor
 /local
 /tmp
 *.yml
